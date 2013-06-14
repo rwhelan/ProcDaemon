@@ -5,9 +5,6 @@ import json
 from proc import Process
 
 class Client(object):
-    def __del__(self):
-        print 'Removing client object'
-
     def __init__(self, g, sock, addr):
         self.g = g
 
@@ -47,6 +44,9 @@ class Client(object):
             self.g['fds'][self.proc.stderr] = self
 
             self.g['pids'][self.proc.pid] = self
+        else:
+            del self.g['fds'][fd]
+            self.sock.close()
             
     def _sock_hup(self, fd, event):
         raise NotImplementedError('Client._sock_hup')
