@@ -4,15 +4,16 @@ import select
 from proc import Process
 
 class Client(object):
-    def __init__(self, sock, addr):
+    def __init__(self, g, sock, addr):
+        self.g = g
+
         self.sock = sock
         self.addr = addr
         self.sockfd = self.sock.fileno()
 
-        clients.append(self)
-        self.fds = [self.sockfd]
+        self.g['fds'][self.sockfd] = self
 
-        poller.register(self.sockfd, select.EPOLLIN)
+        self.g['poller'].register(self.sockfd, select.EPOLLIN)
 
         self.stdoutbuf = ''
         self.stderrbuf = ''
@@ -35,11 +36,13 @@ class Client(object):
         if self.cmd:
             self.proc = Process(self.cmd)
 
-            poller.register(self.proc.stdout, select.EPOLLIN)
-            poller.register(self.proc.stderr, select.EPOLLIN)
+            self.g['poller'].register(self.proc.stdout, select.EPOLLIN)
+            self.g['poller'].register(self.proc.stderr, select.EPOLLIN)
 
-            self.fds.append(self.proc.stdout)
-            self.fds.append(self.proc.stderr)
+            self.g['fds'][self.proc.stdout] = self
+            self.g['fds'][self.proc.stderr] = self
+
+            self.g['pids'][self.proc.pid] = self
             
     def _sock_hup(self, fd, event):
         raise NotImplementedError('Client._sock_hup')
@@ -54,7 +57,14 @@ class Client(object):
     def _proc_hup(self, fd, event):
         self._proc_recv(fd, event)
 
-        poller.unregister(fd)
-        self.fds.remove(fd)
+        self.g['poller'].unregister(fd)
+        del self.g['fds'][fd]
 
         os.close(fd)
+
+    def proc_finish(self, code, res):
+        self.sock.send(self.stdoutbuf)
+
+        del self.g['pids'][self.proc.pid]
+        
+        self.sock.close()
