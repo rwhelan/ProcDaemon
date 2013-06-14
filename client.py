@@ -82,5 +82,6 @@ class Client(object):
         self.sock.send(json.dumps(response, indent = 4))
 
         del self.g['pids'][self.proc.pid]
+        del self.g['fds'][self.sockfd]
         
         self.sock.close()
