@@ -1,9 +1,13 @@
 import os
 import select
+import json
 
 from proc import Process
 
 class Client(object):
+    def __del__(self):
+        print 'Removing client object'
+
     def __init__(self, g, sock, addr):
         self.g = g
 
@@ -63,7 +67,19 @@ class Client(object):
         os.close(fd)
 
     def proc_finish(self, code, res):
-        self.sock.send(self.stdoutbuf)
+
+        proc_usage = {}
+        for rsrc in [i for i in dir(res) if i.startswith('ru_')]:
+            proc_usage[rsrc] = getattr(res, rsrc)
+
+        response = { 'stdout'     : self.stdoutbuf,
+                     'stderr'     : self.stderrbuf,
+                     'returncode' : code >> 8,
+                     'killsig'    : code & 255,
+                     'resource'   : proc_usage,
+                   }
+
+        self.sock.send(json.dumps(response, indent = 4))
 
         del self.g['pids'][self.proc.pid]
         
