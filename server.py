@@ -1,9 +1,10 @@
 import socket
 import select
 
+from includes import asynclient
 from client import Client
 
-class TCPServer(object):
+class TCPServer(asynclient):
     def __init__(self, g, addr, port, outstanding = 5):
         self.g = g
 
@@ -11,10 +12,9 @@ class TCPServer(object):
         self.sock.bind((addr, port))
         self.sock.listen(outstanding)
 
-        self.g['fds'][self.sock.fileno()] = self
+        self.sockfd = self.sock.fileno()
 
-        self.g['poller'].register(self.sock.fileno(), select.EPOLLIN)
+        self.reg_fd(self.sockfd)
 
-    def handle_event(self, fd, event):
-        if event & select.EPOLLIN:
-            Client(self.g, *self.sock.accept())
+    def _sock_recv(self, fd, event):
+        Client(self.g, *self.sock.accept())

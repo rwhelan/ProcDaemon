@@ -2,9 +2,10 @@ import os
 import select
 import json
 
+from includes import asynclient
 from proc import Process
 
-class Client(object):
+class Client(asynclient):
     def __init__(self, g, sock, addr):
         self.g = g
 
@@ -12,40 +13,23 @@ class Client(object):
         self.addr = addr
         self.sockfd = self.sock.fileno()
 
-        self.g['fds'][self.sockfd] = self
-
-        self.g['poller'].register(self.sockfd, select.EPOLLIN)
+        self.reg_fd(self.sockfd)
 
         self.stdoutbuf = ''
         self.stderrbuf = ''
 
-    def handle_event(self, fd, event):
-        if event & select.EPOLLIN:
-            if fd == self.sockfd:
-                self._sock_recv(fd, event)
-            else:
-                self._proc_recv(fd, event)
-
-        if event & select.EPOLLHUP:
-            if fd == self.sockfd:
-                self._sock_hup(fd, event)
-            else:
-                self._proc_hup(fd, event)
 
     def _sock_recv(self, fd, event):
         self.cmd = self.sock.recv(4096)
         if self.cmd:
             self.proc = Process(self.cmd)
 
-            self.g['poller'].register(self.proc.stdout, select.EPOLLIN)
-            self.g['poller'].register(self.proc.stderr, select.EPOLLIN)
-
-            self.g['fds'][self.proc.stdout] = self
-            self.g['fds'][self.proc.stderr] = self
+            self.reg_fd(self.proc.stdout)
+            self.reg_fd(self.proc.stderr)
 
             self.g['pids'][self.proc.pid] = self
         else:
-            del self.g['fds'][fd]
+            self.un_reg_fd(fd)
             self.sock.close()
             
     def _sock_hup(self, fd, event):
@@ -61,8 +45,7 @@ class Client(object):
     def _proc_hup(self, fd, event):
         self._proc_recv(fd, event)
 
-        self.g['poller'].unregister(fd)
-        del self.g['fds'][fd]
+        self.un_reg_fd(fd)
 
         os.close(fd)
 
@@ -82,6 +65,5 @@ class Client(object):
         self.sock.send(json.dumps(response, indent = 4))
 
         del self.g['pids'][self.proc.pid]
-        del self.g['fds'][self.sockfd]
-        
+        self.un_reg_fd(self.sockfd)
         self.sock.close()

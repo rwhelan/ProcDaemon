@@ -11,6 +11,7 @@ g = { 'poller'  : select.epoll(),
     }
 
 TCPServer(g, '127.0.0.1', 19191)
+TCPServer(g, '127.0.0.1', 19192)
 
 def h_sigchld(sig, frm):
     pid, exitcode, res = os.wait3(os.WNOHANG)
