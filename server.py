@@ -2,7 +2,7 @@ import socket
 import select
 
 from includes import asynclient
-from client import Client
+from client import TCPClient
 
 class TCPServer(asynclient):
     def __init__(self, g, addr, port, outstanding = 5):
@@ -17,4 +17,4 @@ class TCPServer(asynclient):
         self.reg_fd(self.sockfd)
 
     def _sock_recv(self, fd, event):
-        Client(self.g, *self.sock.accept())
+        TCPClient(self.g, *self.sock.accept())

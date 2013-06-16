@@ -5,7 +5,7 @@ import json
 from includes import asynclient
 from proc import Process
 
-class Client(asynclient):
+class TCPClient(asynclient):
     def __init__(self, g, sock, addr):
         self.g = g
 
