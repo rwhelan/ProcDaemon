@@ -28,12 +28,15 @@ class TCPClient(asynclient):
             self.reg_fd(self.proc.stderr)
 
             self.g['pids'][self.proc.pid] = self
+
         else:
             self.un_reg_fd(fd)
             self.sock.close()
+
             
     def _sock_hup(self, fd, event):
         raise NotImplementedError('Client._sock_hup')
+
 
     def _proc_recv(self, fd, event):
         if fd == self.proc.stdout:
@@ -42,12 +45,28 @@ class TCPClient(asynclient):
         elif fd == self.proc.stderr:
             self.stderrbuf += os.read(fd, 4096)
 
+
     def _proc_hup(self, fd, event):
         self._proc_recv(fd, event)
 
         self.un_reg_fd(fd)
 
         os.close(fd)
+
+
+    def handle_event(self, fd, event):
+        if event & select.EPOLLIN:
+            if fd == self.sockfd:
+                self._sock_recv(fd, event)
+            else:
+                self._proc_recv(fd, event)
+
+        if event & select.EPOLLHUP:
+            if fd == self.sockfd:
+                self._sock_hup(fd, event)
+            else:
+                self._proc_hup(fd, event)
+
 
     def proc_finish(self, code, res):
 

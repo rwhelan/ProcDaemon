@@ -16,5 +16,11 @@ class TCPServer(asynclient):
 
         self.reg_fd(self.sockfd)
 
+    def handle_event(self, fd, event):
+        assert fd == self.sockfd
+        assert event == select.EPOLLIN
+
+        self._sock_recv(fd, event)
+
     def _sock_recv(self, fd, event):
         TCPClient(self.g, *self.sock.accept())
