@@ -30,6 +30,7 @@ class TCPClient(asynclient):
             self.g['pids'][self.proc.pid] = self
 
         else:
+            raise SystemExit('MASSIVE ASSERT')
             self.un_reg_fd(fd)
             self.sock.close()
 
@@ -47,6 +48,11 @@ class TCPClient(asynclient):
 
 
     def _proc_hup(self, fd, event):
+#        if fd == self.proc.stdout:
+#            print "%s STDOUT HUP" % self.proc.pid
+#        else:
+#            print "%s STDERR HUP" % self.proc.pid
+
         self._proc_recv(fd, event)
 
         self.un_reg_fd(fd)
@@ -69,6 +75,8 @@ class TCPClient(asynclient):
 
 
     def proc_finish(self, code, res):
+
+#        print '%s FINISH' % self.proc.pid
 
         proc_usage = {}
         for rsrc in [i for i in dir(res) if i.startswith('ru_')]:
