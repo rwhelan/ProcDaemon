@@ -30,11 +30,19 @@ class TCPClient(asynclient):
             self.g['pids'][self.proc.pid] = self
 
         else:
-            raise SystemExit('MASSIVE ASSERT')
-            self.un_reg_fd(fd)
-            self.sock.close()
+            # If we're here, the client disconnected
 
-            
+            # Did they leave a proc running?
+            if hasattr(self, 'proc'):
+                self.un_reg_fd(self.proc.stdout)
+                self.un_reg_fd(self.proc.stderr)
+                os.close(self.proc.stdout)
+                os.close(self.proc.stderr)
+                os.kill(self.proc.pid, 9)
+
+            self._close_net_sock()
+
+
     def _sock_hup(self, fd, event):
         raise NotImplementedError('Client._sock_hup')
 
@@ -60,6 +68,13 @@ class TCPClient(asynclient):
         os.close(fd)
 
 
+    def _close_net_sock(self):
+        if not hasattr(self, 'sockclosed'):
+            self.un_reg_fd(self.sockfd)
+            self.sock.close()
+            self.sockclosed = True
+
+
     def handle_event(self, fd, event):
         if event & select.EPOLLIN:
             if fd == self.sockfd:
@@ -77,20 +92,20 @@ class TCPClient(asynclient):
     def proc_finish(self, code, res):
 
 #        print '%s FINISH' % self.proc.pid
+        if not hasattr(self, 'sockclosed'):
 
-        proc_usage = {}
-        for rsrc in [i for i in dir(res) if i.startswith('ru_')]:
-            proc_usage[rsrc] = getattr(res, rsrc)
+            proc_usage = {}
+            for rsrc in [i for i in dir(res) if i.startswith('ru_')]:
+                proc_usage[rsrc] = getattr(res, rsrc)
 
-        response = { 'stdout'     : self.stdoutbuf,
-                     'stderr'     : self.stderrbuf,
-                     'returncode' : code >> 8,
-                     'killsig'    : code & 255,
-                     'resource'   : proc_usage,
-                   }
+            response = { 'stdout'     : self.stdoutbuf,
+                         'stderr'     : self.stderrbuf,
+                         'returncode' : code >> 8,
+                         'killsig'    : code & 255,
+                         'resource'   : proc_usage,
+                       }
 
-        self.sock.send(json.dumps(response, indent = 4))
+            self.sock.send(json.dumps(response, indent = 4))
+            self._close_net_sock()
 
         del self.g['pids'][self.proc.pid]
-        self.un_reg_fd(self.sockfd)
-        self.sock.close()
