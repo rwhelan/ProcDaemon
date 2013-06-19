@@ -34,7 +34,8 @@ while True:
         for ready in g['poller'].poll():
             fd, event = ready
 
-            g['fds'][fd].handle_event(fd, event)
+            try: g['fds'][fd].handle_event(fd, event)
+            except KeyError: continue
 
     except IOError, e:
         if e.errno == errno.EINTR:
