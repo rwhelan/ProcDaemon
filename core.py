@@ -25,6 +25,7 @@ def asyncloop(g):
     while True:
         try:
             for ready in g['poller'].poll():
+                print ready
                 fd, event = ready
 
                 try: g['fds'][fd].handle_event(fd, event)

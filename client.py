@@ -17,7 +17,7 @@ class TCPClient(asynclient):
 
         self.stdoutbuf = ''
         self.stderrbuf = ''
-
+        self.splerrbuf = ''
 
     def _sock_recv(self, fd, event):
         self.cmd = self.sock.recv(4096)
@@ -26,6 +26,7 @@ class TCPClient(asynclient):
 
             self.reg_fd(self.proc.stdout)
             self.reg_fd(self.proc.stderr)
+            self.reg_fd(self.proc.splerr)
 
             self.g['pids'][self.proc.pid] = self
 
@@ -36,8 +37,10 @@ class TCPClient(asynclient):
             if hasattr(self, 'proc'):
                 self.un_reg_fd(self.proc.stdout)
                 self.un_reg_fd(self.proc.stderr)
+                self.un_reg_fd(self.proc.splerr)
                 os.close(self.proc.stdout)
                 os.close(self.proc.stderr)
+                os.close(self.proc.splerr)
                 os.kill(self.proc.pid, 9)
 
             self._close_net_sock()
@@ -53,18 +56,13 @@ class TCPClient(asynclient):
             self.stdoutbuf += os.read(fd, 4096)
         elif fd == self.proc.stderr:
             self.stderrbuf += os.read(fd, 4096)
+        elif fd == self.proc.splerr:
+            self.splerrbuf += os.read(fd, 4096)
 
 
     def _proc_hup(self, fd, event):
-#        if fd == self.proc.stdout:
-#            print "%s STDOUT HUP" % self.proc.pid
-#        else:
-#            print "%s STDERR HUP" % self.proc.pid
-
         self._proc_recv(fd, event)
-
         self.un_reg_fd(fd)
-
         os.close(fd)
 
 
@@ -90,8 +88,6 @@ class TCPClient(asynclient):
 
 
     def proc_finish(self, code, res):
-
-#        print '%s FINISH' % self.proc.pid
         if not hasattr(self, 'sockclosed'):
 
             proc_usage = {}
@@ -100,6 +96,7 @@ class TCPClient(asynclient):
 
             response = { 'stdout'     : self.stdoutbuf,
                          'stderr'     : self.stderrbuf,
+                         'strerror'   : self.splerrbuf,
                          'returncode' : code >> 8,
                          'killsig'    : code & 255,
                          'resource'   : proc_usage,
