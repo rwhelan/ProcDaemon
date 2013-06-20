@@ -1,5 +1,10 @@
 import select
 
+g = { 'poller'  : select.epoll(),
+      'fds'     : {},
+      'pids'    : {},
+    }
+
 class asynclient(object):
     def reg_fd(self, fd, event_filter = select.EPOLLIN):
         self.g['fds'][fd] = self
