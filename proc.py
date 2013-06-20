@@ -33,14 +33,12 @@ class Process(object):
                 _cmd = shlex.split(self.cmd)
             except ValueError, E:
                 os.write(255, E.args[0])
-                os.closerange(0, 256)
                 os._exit(255)
 
             try:
                 os.execvp(_cmd[0], _cmd)
             except OSError, E:
                 os.write(255, E.args[1])
-                os.closerange(0, 256)
                 os._exit(E.errno)
 
 
