@@ -1,11 +1,12 @@
 import os
 import select
 import json
+import time
 
 from includes import asynclient
 from proc import Process
 
-print_calls = True
+print_calls = False
 
 def clgr(fn):
     def wrapper(*args):
@@ -33,6 +34,7 @@ class TCPClient(asynclient):
     def _sock_recv(self, fd, event):
         self.cmd = self.sock.recv(4096)
         if self.cmd and not self.havecmd:
+            print time.ctime()+' - '+self.cmd
             self.havecmd = True
 
             self.proc = Process(self.cmd)
@@ -125,7 +127,7 @@ class TCPClient(asynclient):
             response = { 'stdout'     : self.stdoutbuf,
                          'stderr'     : self.stderrbuf,
                          'strerror'   : self.splerrbuf,
-                         'returncode' : code >> 8,
+                         'exitcode'   : code >> 8,
                          'killsig'    : code & 255,
                          'resource'   : proc_usage,
                        }
